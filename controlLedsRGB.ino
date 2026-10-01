@@ -39,7 +39,17 @@ void setup() {
 
     mcp2515.reset();
     mcp2515.setBitrate(CAN_500KBPS, MCP_20MHZ);
+    mcp2515.setFilterMask(MCP2515::MASK0, false, 0x7F8); //la mascara del filtro ne el buffer RXB0
+    mcp2515.setFilter(MCP2515::RXF0, false, 200); 
+    mcp2515.setFilter(MCP2515::RXF1, false, 200);//filtros del buffer RXB0, para que solo acepte mensajes con ID 200
+    mcp2515.setFilterMask(MCP2515::MASK1, false, 0x7F8); 
+    mcp2515.setFilter(MCP2515::RXF2, false, 200); 
+    mcp2515.setFilter(MCP2515::RXF3, false, 200);
+    mcp2515.setFilter(MCP2515::RXF4, false, 200);
+    mcp2515.setFilter(MCP2515::RXF5, false, 200);
     mcp2515.setNormalMode();
+    
+
 }
 
 void loop() {
@@ -47,7 +57,7 @@ void loop() {
 
   if (mcp2515.readMessage(&frame) == MCP2515::ERROR_OK && frame.can_dlc >= 4) {
     MensajeLED msg;
-    msg.identificador = frame.can_id & CAN_SFF_MASK;
+    msg.identificador = frame.can_id & 0x007;
     msg.R = frame.data[0];
     msg.G = frame.data[1];
     msg.B = frame.data[2];
@@ -115,3 +125,4 @@ void loop() {
   //interrupciones mcp2515 configurar pin interrupcion hardware.
   //posibilidad de hacer un sistema de gesión del clor mas complejo y del brillo con variables de color 
   //y brillo para ca grupo de leds y así no que por ejemplo todos los leds no vayan con el mismo brillo
+  //el id de can siempre son 11 bits
