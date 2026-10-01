@@ -9,23 +9,32 @@
 #define PIN_DATA 15
 #endif
 
-#define CLOCK_PIN 13
-float colorInicial = 0;
 CRGB leds[NUM_LEDS];
-struct mensaje{
-  int identificador;
-  int R;
-  int G;
-  int B;
-  int brillo;
-};
-MCP2515 mcp2515(9);  // CS en pin 9
+MCP2515 mcp2515(9); // CS en pin 9
+uint8_t brilloC02=0;
+uint8_t brillo02=0;
+uint8_t brilloFreon=0;
+uint8_t brilloAlarms=0;
+uint8_t brilloComms=0;
+uint8_t brilloLED1=0;
+uint8_t brilloLED2=0;
+uint8_t brilloLED3=0;
 
-void setup()
-{
+struct MensajeLED {
+    uint32_t identificador;
+    uint8_t R;
+    uint8_t G;
+    uint8_t B;
+    uint8_t brillo;
+};
+
+void setup() {
+    Serial.begin(115200);
+    
     FastLED.addLeds<WS2812B, PIN_DATA, GRB>(leds, NUM_LEDS);
     FastLED.setBrightness(255);
-    Serial.begin(115200);
+    FastLED.clear(true);        
+
     SPI.begin();
 
     mcp2515.reset();
@@ -34,64 +43,70 @@ void setup()
 }
 
 void loop() {
-  /*struct can_frame frame;
-  struct mensaje msg;
-  if (mcp2515.readMessage(&frame) == MCP2515::ERROR_OK) {
-    msg.identificador = frame.can_id;
+  struct can_frame frame;
+
+  if (mcp2515.readMessage(&frame) == MCP2515::ERROR_OK && frame.can_dlc >= 4) {
+    MensajeLED msg;
+    msg.identificador = frame.can_id & CAN_SFF_MASK;
     msg.R = frame.data[0];
     msg.G = frame.data[1];
     msg.B = frame.data[2];
-    msg.brillo = frame.data[3];
 
-
-    if(msg.identificador==0){
-      for (int i = 0; i < NUM_LEDS&&(i!=12||i!=13||i!=14); ++i) {
+    if (msg.identificador==0){
+      for (int i = 0; i < 2; ++i) {
+        brilloC02 = frame.data[3];
         leds[i] = CRGB(msg.R, msg.G, msg.B);
+        leds[i].nscale8(brilloC02);
+
       }
-      FastLED.setBrightness(msg.brillo);
-      FastLED.show();
-    }else if(msg.identificador==1){
-        leds[12] = CRGB(msg.R, msg.G, msg.B);
-      FastLED.setBrightness(msg.brillo);
-      FastLED.show();
-    }else if(msg.identificador==2){
-        leds[13] = CRGB(msg.R, msg.G, msg.B);
-      FastLED.setBrightness(msg.brillo);
-      FastLED.show();
-    }else if(msg.identificador==3){
-        leds[14] = CRGB(msg.R, msg.G, msg.B);
-      FastLED.setBrightness(msg.brillo);
-      FastLED.show();
     }
+    if (msg.identificador==1){
+        brillo02 = frame.data[3];
+        leds[2] = CRGB(msg.R, msg.G, msg.B);
+        leds[2].nscale8(brillo02);
 
+    }
+    if (msg.identificador==2){
+      for (int i = 3; i < 5; ++i) {
+        brilloFreon = frame.data[3];
+        leds[i] = CRGB(msg.R, msg.G, msg.B);
+        leds[i].nscale8(brilloFreon);
+
+      }            
+    }
+    else if (msg.identificador==3){
+      for (int i = 5; i < 9; ++i) {
+        brilloComms = frame.data[3];
+        leds[i] = CRGB(msg.R, msg.G, msg.B);
+        leds[i].nscale8(brilloComms);
+
+      }
+    }else if (msg.identificador==4){
+      for (int i = 9; i < 12; ++i) {
+        brilloAlarms = frame.data[3];
+        leds[i] = CRGB(msg.R, msg.G, msg.B);
+        leds[i].nscale8(brilloAlarms);
+
+      }
+    }
+    else if (msg.identificador==5){
+      brilloLED1 = frame.data[3];
+      leds[12] = CRGB(msg.R, msg.G, msg.B);
+      leds[12].nscale8(brilloLED1);
+    
+    }else if(msg.identificador==6){
+      brilloLED2 = frame.data[3];
+      leds[13] = CRGB(msg.R, msg.G, msg.B);
+      leds[13].nscale8(brilloLED2);
+    }else if(msg.identificador==7){
+      brilloLED3 = frame.data[3];
+      leds[14] = CRGB(msg.R, msg.G, msg.B);
+      leds[14].nscale8(brilloLED3);
+    }
+    FastLED.show();
   }
-  /*for (int i = 0; i < NUM_LEDS; ++i) {
-    if(i==12){
-      leds[i] = CRGB::Red;
-    }
-    if(i==13){
-      leds[i] = CRGB::Green;
-    }
-    if(i==14){
-      leds[i] = CRGB::Blue;
-    }
-    if(i==0||i==1||i==2){
-      leds[i]=CRGB::Blue;
-
-    }if(i==5||i==6||i==7||i==8||i==9||i==10||i==11){
-      leds[i]=CRGB::White;
-    }
-
-    if(i==3||i==4){
-      leds[i]=CRGB::Yellow;
-    }
-  }
-  */
-  //fill_rainbow(leds, NUM_LEDS, colorInicial, 15);
-  //colorInicial+=0.25;
-  for (int i = 0; i < NUM_LEDS; ++i) {
-
-  leds[i]=CRGB::Green;
-  }
-  FastLED.show();
+  //FILTROS HARDWARE MCP 2515:
+  //interrupciones mcp2515 configurar pin interrupcion hardware.
+  //posibilidad de hacer un sistema de gesión del clor mas complejo y del brillo con variables de color 
+  //y brillo para ca grupo de leds y así no que por ejemplo todos los leds no vayan con el mismo brillo
 }
